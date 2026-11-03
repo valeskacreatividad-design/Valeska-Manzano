@@ -1,0 +1,6 @@
+{
+  "name": "EncuestaFlow - Creador y Recolector de Encuestas en la Nube",
+  "description": "Crea encuestas interactivas, compártelas con cualquier persona por enlace o WhatsApp, recopila respuestas en tiempo real y descarga reportes en Excel ordenados y agrupados.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

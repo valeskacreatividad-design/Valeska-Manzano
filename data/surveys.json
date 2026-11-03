@@ -1,0 +1,141 @@
+{
+  "surveys": {
+    "demo-satisfaccion": {
+      "id": "demo-satisfaccion",
+      "title": "Encuesta de Satisfacción y Experiencia del Cliente",
+      "description": "Agradecemos tu valiosa opinión sobre nuestros servicios. Tu respuesta nos ayuda a seguir mejorando.",
+      "createdAt": "2026-10-31T01:05:04.088Z",
+      "adminKey": "key_demo_satisfaccion",
+      "active": true,
+      "questions": [
+        {
+          "id": "q_calificacion",
+          "text": "¿Cómo calificarías tu experiencia general con nuestro servicio?",
+          "type": "rating",
+          "required": true,
+          "minRating": 1,
+          "maxRating": 5
+        },
+        {
+          "id": "q_servicio",
+          "text": "¿Qué aspecto valoras más de nuestra atención?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            "Rapidez de respuesta",
+            "Claridad de la información",
+            "Amabilidad del personal",
+            "Calidad del producto final"
+          ]
+        },
+        {
+          "id": "q_canales",
+          "text": "¿A través de qué canales te gustaría recibir información?",
+          "type": "checkbox",
+          "required": false,
+          "options": [
+            "WhatsApp",
+            "Correo Electrónico",
+            "Llamada telefónica",
+            "Redes Sociales"
+          ]
+        },
+        {
+          "id": "q_recomienda",
+          "text": "¿Recomendarías nuestros servicios a amigos o colegas?",
+          "type": "yesno",
+          "required": true
+        },
+        {
+          "id": "q_comentarios",
+          "text": "¿Tienes alguna sugerencia adicional o comentario que desees compartir?",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Escribe aquí cualquier comentario..."
+        }
+      ]
+    }
+  },
+  "responses": {
+    "demo-satisfaccion": [
+      {
+        "id": "resp_1",
+        "surveyId": "demo-satisfaccion",
+        "submittedAt": "2026-11-02T07:05:04.088Z",
+        "respondentName": "Carlos Mendoza",
+        "answers": {
+          "q_calificacion": 5,
+          "q_servicio": "Rapidez de respuesta",
+          "q_canales": [
+            "WhatsApp",
+            "Correo Electrónico"
+          ],
+          "q_recomienda": "Sí",
+          "q_comentarios": "Excelente atención, resolvieron mi consulta en menos de 10 minutos."
+        }
+      },
+      {
+        "id": "resp_2",
+        "surveyId": "demo-satisfaccion",
+        "submittedAt": "2026-11-02T13:05:04.088Z",
+        "respondentName": "María Fernanda Ruiz",
+        "answers": {
+          "q_calificacion": 4,
+          "q_servicio": "Calidad del producto final",
+          "q_canales": [
+            "WhatsApp"
+          ],
+          "q_recomienda": "Sí",
+          "q_comentarios": "Muy buen servicio, seguiré contando con ustedes para futuros proyectos."
+        }
+      },
+      {
+        "id": "resp_3",
+        "surveyId": "demo-satisfaccion",
+        "submittedAt": "2026-11-02T19:05:04.088Z",
+        "respondentName": "Jorge Alarcón",
+        "answers": {
+          "q_calificacion": 5,
+          "q_servicio": "Amabilidad del personal",
+          "q_canales": [
+            "Correo Electrónico",
+            "Redes Sociales"
+          ],
+          "q_recomienda": "Sí",
+          "q_comentarios": "El equipo fue muy atento durante todo el proceso de entrega."
+        }
+      },
+      {
+        "id": "resp_4",
+        "surveyId": "demo-satisfaccion",
+        "submittedAt": "2026-11-02T23:05:04.088Z",
+        "respondentName": "Lucía Benítez",
+        "answers": {
+          "q_calificacion": 4,
+          "q_servicio": "Claridad de la información",
+          "q_canales": [
+            "WhatsApp",
+            "Redes Sociales"
+          ],
+          "q_recomienda": "Sí",
+          "q_comentarios": "Todo muy transparente y bien explicado."
+        }
+      },
+      {
+        "id": "resp_mvzzkf5w9sg",
+        "surveyId": "demo-satisfaccion",
+        "submittedAt": "2026-11-03T01:05:18.020Z",
+        "respondentName": "Usuario Prueba Celular",
+        "answers": {
+          "q_calificacion": 5,
+          "q_servicio": "Rapidez de respuesta",
+          "q_canales": [
+            "WhatsApp"
+          ],
+          "q_recomienda": "Sí",
+          "q_comentarios": "Probando el flujo desde otro dispositivo"
+        }
+      }
+    ]
+  }
+}

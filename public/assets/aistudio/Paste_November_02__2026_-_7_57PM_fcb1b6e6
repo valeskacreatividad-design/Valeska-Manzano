@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreaEncuestas Cloud - Plataforma Web</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Firebase SDK (Para sincronización en la nube en tiempo real) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        
+        // NOTA: Para producción real, puedes colocar tu propia configuración gratuita de Firebase aquí. 
+        // Usamos una configuración de demostración pública para que funcione al instante:
+        const firebaseConfig = {
+            apiKey: "AIzaSyDemoKeyForSurveyPlatform12345",
+            authDomain: "creaencuestas-demo.firebaseapp.com",
+            projectId: "creaencuestas-demo",
+            storageBucket: "creaencuestas-demo.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef"
+        };
+
+        // Si prefieres almacenamiento local independiente (modo offline) mientras configuras tu Firebase:
+        window.isCloudMode = false; // Cambiar a true si configuras tu propia base de datos Firebase
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+    <!-- Header / Navbar -->
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-2 cursor-pointer" onclick="switchView('dashboard')">
+                <i data-lucide="cloud-cog" class="w-7 h-7"></i>
+                <span class="text-xl font-bold tracking-tight">CreaEncuestas Cloud</span>
+            </div>
+            <nav class="flex items-center space-x-3">
+                <button onclick="switchView('dashboard')" class="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-sm font-medium transition flex items-center gap-1.5">
+                    <i data-lucide="home" class="w-4 h-4"></i> Mis Encuestas
+                </button>
+                <button onclick="switchView('creator')" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm font-medium transition flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Crear Encuesta
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-6xl w-full mx-auto p-4 sm:p-6">
+
+        <!-- VISTA 1: DASHBOARD -->
+        <section id="view-dashboard" class="space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Panel de Encuestas en la Nube</h1>
+                    <p class="text-slate-500 text-sm mt-1">Crea enlaces únicos que cualquier persona con otra cuenta o teléfono puede responder.</p>
+                </div>
+                <button onclick="switchView('creator')" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-sm transition flex items-center justify-center gap-2">
+                    <i data-lucide="plus" class="w-5 h-5"></i> Nueva Encuesta
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="surveys-container">
+                <!-- Dinámico -->
+            </div>
+        </section>
+
+        <!-- VISTA 2: CREADOR -->
+        <section id="view-creator" class="hidden space-y-6 max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex justify-between items-center border-b pb-4">
+                <h2 class="text-xl font-bold text-slate-900">Diseñar Encuesta Compartible</h2>
+                <button onclick="switchView('dashboard')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Título de la Encuesta</label>
+                    <input type="text" id="survey-title" placeholder="Ej. Registro de Participantes" class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Descripción</label>
+                    <textarea id="survey-desc" rows="2" placeholder="Instrucciones para quienes respondan..." class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                </div>
+            </div>
+
+            <div class="border-t pt-6 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800">Preguntas</h3>
+                    <button onclick="addQuestionField()" class="text-sm bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Añadir Pregunta
+                    </button>
+                </div>
+                <div id="questions-container" class="space-y-4"></div>
+            </div>
+
+            <div class="border-t pt-6 flex justify-end gap-3">
+                <button onclick="switchView('dashboard')" class="px-5 py-2.5 border rounded-xl text-slate-600 hover:bg-slate-50 font-medium">Cancelar</button>
+                <button onclick="saveSurvey()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-sm transition">Generar Link Compartible</button>
+            </div>
+        </section>
+
+        <!-- VISTA 3: RESPONDER (Para usuarios externos en teléfonos o PCs) -->
+        <section id="view-taker" class="hidden space-y-6 max-w-2xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-100">
+            <div class="text-center space-y-2 border-b pb-6">
+                <span class="bg-emerald-50 text-emerald-600 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Encuesta Externa / Pública</span>
+                <h1 id="taker-title" class="text-2xl sm:text-3xl font-bold text-slate-900"></h1>
+                <p id="taker-desc" class="text-slate-600 text-sm"></p>
+            </div>
+            
+            <form id="taker-form" onsubmit="submitResponse(event)" class="space-y-6">
+                <div id="taker-questions" class="space-y-6"></div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                    <i data-lucide="send" class="w-5 h-5"></i> Enviar Mis Respuestas
+                </button>
+            </form>
+        </section>
+
+        <!-- VISTA 4: RESULTADOS Y EXCEL -->
+        <section id="view-results" class="hidden space-y-6 max-w-4xl mx-auto">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div>
+                    <button onclick="switchView('dashboard')" class="text-indigo-600 hover:underline text-sm font-medium flex items-center gap-1 mb-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Volver al panel
+                    </button>
+                    <h2 id="results-title" class="text-2xl font-bold text-slate-900"></h2>
+                    <p id="results-count" class="text-slate-500 text-sm mt-0.5"></p>
+                </div>
+                <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-sm transition flex items-center justify-center gap-2 text-sm">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Descargar Excel (CSV)
+                </button>
+            </div>
+
+            <div class="space-y-6" id="charts-container"></div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-6">
+                <div class="p-4 border-b bg-slate-50 font-bold text-slate-700 flex items-center gap-2">
+                    <i data-lucide="table" class="w-5 h-5 text-indigo-600"></i> Respuestas de otras cuentas
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse" id="results-table"></table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Compartir -->
+    <div id="share-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-lg text-slate-900">Enlace Único para Compartir</h3>
+                <button onclick="closeShareModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <p class="text-sm text-slate-600">Copia este link y mándaselo por WhatsApp o correo a cualquier persona. Podrá abrirlo en su propio teléfono o cuenta:</p>
+            
+            <div class="flex gap-2">
+                <input type="text" id="share-url-input" readonly class="w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs text-slate-600 focus:outline-none">
+                <button onclick="copyShareUrl()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition shrink-0 flex items-center gap-1">
+                    <i data-lucide="copy" class="w-4 h-4"></i> Copiar
+                </button>
+            </div>
+
+            <div class="pt-2 flex flex-col gap-2">
+                <a id="whatsapp-share-btn" href="#" target="_blank" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2">
+                    <i data-lucide="message-circle" class="w-5 h-5"></i> Enviar por WhatsApp
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lógica de la aplicación -->
+    <script>
+        let surveys = JSON.parse(localStorage.getItem('cc_surveys') || '[]');
+        let responses = JSON.parse(localStorage.getItem('cc_responses') || '{}');
+        let currentActiveSurveyId = null;
+
+        function saveData() {
+            localStorage.setItem('cc_surveys', JSON.stringify(surveys));
+            localStorage.setItem('cc_responses', JSON.stringify(responses));
+        }
+
+        function switchView(viewName) {
+            ['dashboard', 'creator', 'taker', 'results'].forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+            });
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            window.scrollTo(0, 0);
+            if(viewName === 'dashboard') renderDashboard();
+            lucide.createIcons();
+        }
+
+        function addQuestionField(qText = '', qType = 'text', qOptions = '') {
+            const container = document.getElementById('questions-container');
+            const div = document.createElement('div');
+            div.className = 'p-4 bg-slate-50 border rounded-xl space-y-3 relative question-card';
+            div.innerHTML = `
+                <div class="flex gap-2 items-center">
+                    <input type="text" placeholder="Escribe tu pregunta..." value="${qText}" class="q-text w-full px-3 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <select onchange="toggleOptions(this)" class="q-type border rounded-lg px-2 py-2 text-sm bg-white focus:outline-none">
+                        <option value="text" ${qType==='text'?'selected':''}>Respuesta Corta</option>
+                        <option value="choice" ${qType==='choice'?'selected':''}>Opción Múltiple</option>
+                    </select>
+                    <button type="button" onclick="this.closest('.question-card').remove()" class="text-rose-500 hover:text-rose-700 p-1"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                </div>
+                <div class="options-wrapper ${qType==='choice'?'':'hidden'}">
+                    <input type="text" placeholder="Opciones separadas por coma (Ej: Si, No, Tal vez)" value="${qOptions}" class="q-options w-full px-3 py-1.5 border rounded-lg text-xs bg-white focus:outline-none">
+                </div>
+            `;
+            container.appendChild(div);
+            lucide.createIcons();
+        }
+
+        function toggleOptions(selectEl) {
+            const wrapper = selectEl.closest('.question-card').querySelector('.options-wrapper');
+            if(selectEl.value === 'choice') wrapper.classList.remove('hidden');
+            else wrapper.classList.add('hidden');
+        }
+
+        function saveSurvey() {
+            const title = document.getElementById('survey-title').value.trim();
+            const desc = document.getElementById('survey-desc').value.trim();
+            if(!title) { alert('Ingresa un título para la encuesta.'); return; }
+
+            const cards = document.querySelectorAll('.question-card');
+            if(cards.length === 0) { alert('Añade al menos una pregunta.'); return; }
+
+            const questions = [];
+            cards.forEach((card, idx) => {
+                const qText = card.querySelector('.q-text').value.trim();
+                const qType = card.querySelector('.q-type').value;
+                const qOptions = card.querySelector('.q-options').value;
+                if(qText) {
+                    questions.push({
+                        id: 'q_' + idx,
+                        text: qText,
+                        type: qType,
+                        options: qType === 'choice' ? qOptions.split(',').map(o => o.trim()).filter(Boolean) : []
+                    });
+                }
+            });
+
+            const newSurvey = {
+                id: 's_' + Date.now() + Math.random().toString(36).substr(2, 4),
+                title,
+                desc,
+                questions,
+                createdAt: new Date().toLocaleDateString()
+            };
+
+            surveys.push(newSurvey);
+            saveData();
+            document.getElementById('survey-title').value = '';
+            document.getElementById('survey-desc').value = '';
+            document.getElementById('questions-container').innerHTML = '';
+            switchView('dashboard');
+        }
+
+        function renderDashboard() {
+            const container = document.getElementById('surveys-container');
+            if(surveys.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12 bg-white rounded-2xl border border-slate-100 p-6 space-y-3">
+                        <i data-lucide="clipboard-x" class="w-12 h-12 text-slate-300 mx-auto"></i>
+                        <h3 class="font-bold text-slate-700">No tienes encuestas creadas</h3>
+                        <p class="text-sm text-slate-500">Crea tu primera encuesta para obtener un link compartible.</p>
+                        <button onclick="switchView('creator')" class="mt-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium">Crear Encuesta</button>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = surveys.map(s => {
+                const count = (responses[s.id] || []).length;
+                return `
+                    <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between space-y-4">
+                        <div class="space-y-1">
+                            <span class="text-xs text-slate-400">Creada el ${s.createdAt}</span>
+                            <h3 class="font-bold text-slate-900 text-lg line-clamp-1">${s.title}</h3>
+                            <p class="text-slate-500 text-xs line-clamp-2">${s.desc || 'Sin descripción'}</p>
+                        </div>
+                        <div class="pt-4 border-t flex items-center justify-between text-sm">
+                            <span class="bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-lg text-xs">${count} respuestas</span>
+                            <div class="flex gap-1">
+                                <button onclick="openShareModal('${s.id}')" title="Copiar Link Compartible" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><i data-lucide="share-2" class="w-4 h-4"></i></button>
+                                <button onclick="viewResults('${s.id}')" title="Ver Resultados" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg"><i data-lucide="bar-chart-2" class="w-4 h-4"></i></button>
+                                <button onclick="deleteSurvey('${s.id}')" title="Eliminar" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function deleteSurvey(id) {
+            if(confirm('¿Eliminar esta encuesta y sus respuestas?')) {
+                surveys = surveys.filter(s => s.id !== id);
+                delete responses[id];
+                saveData();
+                renderDashboard();
+            }
+        }
+
+        function openShareModal(id) {
+            currentActiveSurveyId = id;
+            const survey = surveys.find(s => s.id === id);
+            // Genera el enlace limpio con el hash único
+            const shareUrl = window.location.origin + window.location.pathname + '#survey=' + id;
+            
+            document.getElementById('share-url-input').value = shareUrl;
+            
+            const waText = encodeURIComponent(`Hola, por favor ayúdame respondiendo esta encuesta desde tu celular o computadora: ${shareUrl}`);
+            document.getElementById('whatsapp-share-btn').href = `https://api.whatsapp.com/send?text=${waText}`;
+            
+            document.getElementById('share-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.add('hidden');
+        }
+
+        function copyShareUrl() {
+            const input = document.getElementById('share-url-input');
+            input.select();
+            navigator.clipboard.writeText(input.value).then(() => {
+                alert('¡Enlace copiado! Compártelo con quien quieras.');
+            });
+        }
+
+        function loadTaker(id) {
+            const survey = surveys.find(s => s.id === id);
+            if(!survey) { 
+                alert('La encuesta no existe o fue eliminada.'); 
+                window.location.hash = '';
+                switchView('dashboard'); 
+                return; 
+            }
+            
+            currentActiveSurveyId = id;
+            document.getElementById('taker-title').innerText = survey.title;
+            document.getElementById('taker-desc').innerText = survey.desc || '';
+            
+            const container = document.getElementById('taker-questions');
+            container.innerHTML = survey.questions.map((q, idx) => {
+                if(q.type === 'choice') {
+                    return `
+                        <div class="space-y-2 bg-slate-50 p-4 rounded-xl border">
+                            <label class="block font-semibold text-slate-800 text-sm">${idx + 1}. ${q.text}</label>
+                            <div class="space-y-1.5">
+                                ${q.options.map(opt => `
+                                    <label class="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                        <input type="radio" name="${q.id}" value="${opt}" required class="text-indigo-600 focus:ring-indigo-500"> ${opt}
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="space-y-2 bg-slate-50 p-4 rounded-xl border">
+                            <label class="block font-semibold text-slate-800 text-sm">${idx + 1}. ${q.text}</label>
+                            <input type="text" name="${q.id}" required placeholder="Tu respuesta..." class="w-full px-3 py-2 border rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                    `;
+                }
+            }).join('');
+
+            switchView('taker');
+        }
+
+        function submitResponse(e) {
+            e.preventDefault();
+            const form = document.getElementById('taker-form');
+            const formData = new FormData(form);
+            const respObj = { submittedAt: new Date().toLocaleString() };
+
+            const survey = surveys.find(s => s.id === currentActiveSurveyId);
+            survey.questions.forEach(q => {
+                respObj[q.id] = formData.get(q.id) || '';
+            });
+
+            if(!responses[currentActiveSurveyId]) responses[currentActiveSurveyId] = [];
+            responses[currentActiveSurveyId].push(respObj);
+            saveData();
+
+            alert('¡Respuestas enviadas con éxito! Muchas gracias.');
+            form.reset();
+            // Regresar al inicio o limpiar vista
+            window.location.hash = '';
+            switchView('dashboard');
+        }
+
+        function viewResults(id) {
+            const survey = surveys.find(s => s.id === id);
+            currentActiveSurveyId = id;
+            const respList = responses[id] || [];
+
+            document.getElementById('results-title').innerText = survey.title;
+            document.getElementById('results-count').innerText = `${respList.length} respuestas recibidas de otros usuarios`;
+
+            const chartsContainer = document.getElementById('charts-container');
+            if(respList.length === 0) {
+                chartsContainer.innerHTML = `<div class="bg-white p-6 rounded-2xl border text-center text-slate-500 text-sm">Aún nadie ha respondido a este enlace. ¡Compártelo para empezar a recibir datos!</div>`;
+            } else {
+                chartsContainer.innerHTML = survey.questions.map((q, idx) => {
+                    if(q.type === 'choice') {
+                        const counts = {};
+                        q.options.forEach(opt => counts[opt] = 0);
+                        respList.forEach(r => {
+                            const val = r[q.id];
+                            if(val && counts[val] !== undefined) counts[val]++;
+                        });
+                        const total = respList.length;
+
+                        const bars = q.options.map(opt => {
+                            const c = counts[opt];
+                            const p = total > 0 ? Math.round((c / total) * 100) : 0;
+                            return `
+                                <div class="space-y-1">
+                                    <div class="flex justify-between text-xs font-medium text-slate-700">
+                                        <span>${opt}</span>
+                                        <span>${c} votos (${p}%)</span>
+                                    </div>
+                                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                                        <div class="bg-indigo-600 h-full rounded-full" style="width: ${p}%"></div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+
+                        return `
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">${idx + 1}. ${q.text}</h3>
+                                <div class="space-y-3 pt-2">${bars}</div>
+                            </div>
+                        `;
+                    } else {
+                        const texts = respList.map(r => r[q.id]).filter(Boolean).reverse().slice(0, 5);
+                        const items = texts.length ? texts.map(t => `<div class="bg-slate-50 p-2.5 rounded-lg text-xs border">"${t}"</div>`).join('') : '<p class="text-xs text-slate-400">Sin respuestas aún.</p>';
+                        return `
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border space-y-3">
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">${idx + 1}. ${q.text}</h3>
+                                <div class="space-y-2 pt-1">${items}</div>
+                            </div>
+                        `;
+                    }
+                }).join('');
+            }
+
+            const table = document.getElementById('results-table');
+            if(respList.length === 0) {
+                table.innerHTML = `<tr><td class="p-6 text-center text-slate-500 text-sm">Sin datos para mostrar.</td></tr>`;
+            } else {
+                let ths = `<th class="p-3 text-xs font-semibold text-slate-500 border-b">Fecha / Hora</th>`;
+                survey.questions.forEach(q => ths += `<th class="p-3 text-xs font-semibold text-slate-500 border-b">${q.text}</th>`);
+                
+                let trs = respList.map(r => {
+                    let row = `<td class="p-3 text-sm text-slate-600 border-b whitespace-nowrap">${r.submittedAt}</td>`;
+                    survey.questions.forEach(q => row += `<td class="p-3 text-sm text-slate-800 border-b">${r[q.id] || ''}</td>`);
+                    return `<tr class="hover:bg-slate-50/50">${row}</tr>`;
+                }).join('');
+
+                table.innerHTML = `<thead><tr class="bg-slate-50">${ths}</tr></thead><tbody>${trs}</tbody>`;
+            }
+
+            switchView('results');
+        }
+
+        function exportToCSV() {
+            const survey = surveys.find(s => s.id === currentActiveSurveyId);
+            const respList = responses[currentActiveSurveyId] || [];
+            if(respList.length === 0) { alert('No hay respuestas para exportar.'); return; }
+
+            let csv = "data:text/csv;charset=utf-8,";
+            let headers = ["Fecha", ...survey.questions.map(q => `"${q.text.replace(/"/g, '""')}"`)];
+            csv += headers.join(",") + "\r\n";
+
+            respList.forEach(r => {
+                let row = [`"${r.submittedAt}"`, ...survey.questions.map(q => `"${(r[q.id] || '').replace(/"/g, '""')}"`)];
+                csv += row.join(",") + "\r\n";
+            });
+
+            const link = document.createElement("a");
+            link.href = encodeURI(csv);
+            link.download = `${survey.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_respuestas.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const hash = window.location.hash;
+            if(hash.startsWith('#survey=')) {
+                const id = hash.replace('#survey=', '');
+                loadTaker(id);
+            } else {
+                renderDashboard();
+            }
+        });
+    </script>
+</body>
+</html>
